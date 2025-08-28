@@ -9,9 +9,14 @@ pip install -r requirements.txt
 pip install -e .
 
 
-python -m text2audio.cli -t "Fuck me Hard!" -b gtts -l en -o hello1.mp3
+## Run with CLI:
+
+python -m text2audio.cli -t "Hello World" -b gtts -l en -o hello1.mp3
 
 echo "Guten Tag!" | python -m text2audio.cli -b pyttsx3 -l de -o hallo.wav
+
+
+## Run with UI:
 
 streamlit run text2audio/web_app.py
 
