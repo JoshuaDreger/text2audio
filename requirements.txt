@@ -2,6 +2,7 @@ gTTS==2.5.3
 pyttsx3==2.90
 pydub==0.25.1
 streamlit==1.38.0
-piper-tts
-onnxruntime
+piper-tts>=1.2.0,<2
+onnxruntime>=1.17.0,<2
 piper-phonemize
+requests>=2.32.0

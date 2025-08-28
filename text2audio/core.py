@@ -1,21 +1,46 @@
 from pathlib import Path
-from typing import Literal
-from text2audio.backends import tts_gtts, tts_pyttsx3
+from typing import Literal, Optional, Union
+from text2audio.backends import tts_gtts, tts_pyttsx3, tts_piper
 
+Backend = Literal["gtts", "pyttsx3", "piper"]
 
-Backend = Literal["gtts", "pyttsx3"]
+def synthesize(
+    text: str,
+    backend: Backend = "gtts",
+    lang: str = "en",
+    out: str = "out.mp3",
+    *,
+    # Piper:
+    piper_model: Optional[Union[str, Path]] = None,  # accepts short key (e.g., "de_DE-thorsten-high") or path
+    length_scale: Optional[float] = None,
+    noise_scale: Optional[float] = None,
+    noise_w: Optional[float] = None,
+) -> Path:
+    out_path = Path(out).expanduser().resolve()
 
-def synthesize(text: str, backend: Backend = "gtts", lang: str = "en", out: str = "out.mp3") -> Path:
-    out_path = Path(out)
     if backend == "gtts":
-        # enforce mp3 for gTTS
         if out_path.suffix.lower() != ".mp3":
             out_path = out_path.with_suffix(".mp3")
         return tts_gtts(text, lang=lang, out=out_path)
+
     elif backend == "pyttsx3":
-        # enforce wav for pyttsx3 (most reliable)
         if out_path.suffix.lower() != ".wav":
             out_path = out_path.with_suffix(".wav")
         return tts_pyttsx3(text, lang=lang, out=out_path)
+
+    elif backend == "piper":
+        if out_path.suffix.lower() != ".wav":
+            out_path = out_path.with_suffix(".wav")
+        if not piper_model:
+            raise ValueError("For backend='piper', provide piper_model (short key or path).")
+        return tts_piper(
+            text,
+            model=piper_model,
+            out=out_path,
+            length_scale=length_scale or 1.0,
+            noise_scale=noise_scale or 0.667,
+            noise_w=noise_w or 0.8,
+        )
+
     else:
         raise ValueError(f"Unknown backend: {backend}")

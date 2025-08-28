@@ -13,6 +13,8 @@ python -m text2audio.cli -t "Fuck me Hard!" -b gtts -l en -o hello1.mp3
 
 echo "Guten Tag!" | python -m text2audio.cli -b pyttsx3 -l de -o hallo.wav
 
+streamlit run text2audio/web_app.py
+
 
 
 
