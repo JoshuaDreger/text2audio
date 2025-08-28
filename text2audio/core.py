@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Literal
-from .backends import tts_gtts, tts_pyttsx3
+from text2audio.backends import tts_gtts, tts_pyttsx3
+
 
 Backend = Literal["gtts", "pyttsx3"]
 

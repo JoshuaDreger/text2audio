@@ -1,6 +1,6 @@
 import streamlit as st
 from pathlib import Path
-from .core import synthesize
+from text2audio.core import synthesize
 
 st.set_page_config(page_title="text2audio", page_icon="🔊")
 st.title("Text → Audio")

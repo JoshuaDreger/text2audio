@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=62", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text2audio"
+version = "0.1.0"
+description = "Tiny, pluggable Text-to-Speech with CLI + Streamlit UI"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["."]

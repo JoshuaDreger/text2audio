@@ -1,7 +1,7 @@
 import sys
 import argparse
 from pathlib import Path
-from .core import synthesize
+from text2audio.core import synthesize
 
 def main():
     ap = argparse.ArgumentParser(description="Text → Audio")
