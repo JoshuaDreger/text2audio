@@ -11,10 +11,7 @@ def synthesize(
     out: str = "out.mp3",
     *,
     # Piper:
-    piper_model: Optional[Union[str, Path]] = None,  # accepts short key (e.g., "de_DE-thorsten-high") or path
-    length_scale: Optional[float] = None,
-    noise_scale: Optional[float] = None,
-    noise_w: Optional[float] = None,
+    piper_model: Optional[Union[str, Path]] = None,
 ) -> Path:
     out_path = Path(out).expanduser().resolve()
 
@@ -37,9 +34,6 @@ def synthesize(
             text,
             model=piper_model,
             out=out_path,
-            length_scale=length_scale or 1.0,
-            noise_scale=noise_scale or 0.667,
-            noise_w=noise_w or 0.8,
         )
 
     else:

@@ -46,11 +46,7 @@ def tts_pyttsx3(text: str, lang: Optional[str] = None, out: Path = Path("out.wav
 def tts_piper(
     text: str,
     model: Union[str, Path],               # short key or .onnx path
-    out: Path = Path("out.wav"),
-    *,
-    length_scale: float = 1.0,
-    noise_scale: float = 0.667,
-    noise_w: float = 0.8,
+    out: Path = Path("out.wav")
 ) -> Path:
     """
     Robust Piper backend:
@@ -82,42 +78,13 @@ def tts_piper(
 
     # ---------- Try Python API first ----------
     try:
+        import wave
         from piper import PiperVoice
+        
         voice = PiperVoice.load(model_path)
 
-        def _supported_kwargs(fn, **kwargs):
-            try:
-                params = inspect.signature(fn).parameters
-                return {k: v for k, v in kwargs.items() if k in params and v is not None}
-            except Exception:
-                return {}
-
-        kw = {
-            "length_scale": length_scale,
-            "noise_scale":  noise_scale,
-            "noise_w":      noise_w,
-        }
-
-        with out.open("wb") as f:
-            if hasattr(voice, "synthesize_stream"):              # newer API
-                fn = voice.synthesize_stream
-                try:
-                    for chunk in fn(text, **_supported_kwargs(fn, **kw)):
-                        f.write(chunk)
-                except TypeError:
-                    # retry without kwargs if this version doesn't accept them
-                    for chunk in fn(text):
-                        f.write(chunk)
-            else:                                                # older API
-                fn = voice.synthesize
-                try:
-                    data = fn(text, **_supported_kwargs(fn, **kw))
-                except TypeError:
-                    data = fn(text)
-                # some versions return (bytes, sample_rate)
-                if isinstance(data, tuple):
-                    data = data[0]
-                f.write(data)
+        with wave.open(str(out), "wb") as wf:
+            voice.synthesize_wav(text, wf)
 
         if not out.exists() or out.stat().st_size == 0:
             raise RuntimeError("Piper produced no audio via Python API.")
@@ -135,10 +102,6 @@ def tts_piper(
             "--output_file", str(out),
             "--text", text,
         ]
-        # only add CLI args that exist in most piper builds
-        if length_scale is not None: cmd += ["--length_scale", str(length_scale)]
-        if noise_scale  is not None: cmd += ["--noise_scale",  str(noise_scale)]
-        if noise_w      is not None: cmd += ["--noise_w",      str(noise_w)]
 
         try:
             subprocess.run(cmd, check=True)

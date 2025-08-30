@@ -1,30 +1,29 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-import shutil, gzip, io
+from typing import Dict, Tuple
+import shutil, gzip
 
 DEFAULT_MODELS_DIR = Path("models")
 HF_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
 
 MODELS: Dict[str, Tuple[str, str]] = {
-    "de_DE-thorsten-high": (
+    "Thorsten (DE)": (
         "de/de_DE/thorsten/high",  # path
         "de_DE-thorsten-high"      # base filename
     ),
-    "de_DE-karlsson-low": (
+    "Karlsson (DE)": (
         "de/de_DE/karlsson/low",
         "de_DE-karlsson-low"
     ),
-    "en_US-amy-medium": (
+    "Amy (US)": (
         "en/en_US/amy/medium",
         "en_US-amy-medium"
     ),
-    "en_US-libritts_r-medium": (
-        "en/en_US/libritts_r/medium",
+    "Libri (US)": (
+        "en/en_US/libritts/medium",
         "en_US-libritts_r-medium"
     ),
 }
-
 
 def _hf_url(dirpath: str, base: str, ext: str) -> str:
     # ext in {".onnx", ".onnx.gz", ".onnx.json"}
@@ -61,9 +60,7 @@ def ensure_model(short_name: str, models_dir: Path = DEFAULT_MODELS_DIR, *, prog
                         progress_cb(label, min(done / total, 1.0))
             tmp.rename(dest)
 
-    # 1) ONNX: try plain, then gz and decompress
     if not onnx_path.exists():
-        # try .onnx first
         try_exts = [(".onnx", False), (".onnx.gz", True)]
         last_err = None
         for ext, is_gz in try_exts:
@@ -73,7 +70,6 @@ def ensure_model(short_name: str, models_dir: Path = DEFAULT_MODELS_DIR, *, prog
                 tmp = onnx_path.with_suffix(onnx_path.suffix + (".dl" if not is_gz else ".gz.dl"))
                 _download(url, tmp, f"{base}{ext}")
                 if is_gz:
-                    # decompress to .onnx
                     if progress_cb: progress_cb(f"Decompressing {base}{ext}", 0.0)
                     with gzip.open(tmp, "rb") as src, open(onnx_path, "wb") as dst:
                         shutil.copyfileobj(src, dst)
@@ -85,17 +81,14 @@ def ensure_model(short_name: str, models_dir: Path = DEFAULT_MODELS_DIR, *, prog
                 last_err = e
                 continue
         else:
-            # none worked
             raise RuntimeError(f"Failed to fetch ONNX for {short_name}: {last_err}")
 
-        # sanity checks
         head = onnx_path.read_bytes()[:256]
         if head.startswith(b"version https://git-lfs") or b"<html" in head.lower():
             raise RuntimeError(f"{onnx_path.name} is not a valid ONNX (LFS pointer or HTML).")
         if onnx_path.stat().st_size < 1024 * 1024:
             raise RuntimeError(f"{onnx_path.name} seems too small ({onnx_path.stat().st_size} bytes).")
 
-    # 2) JSON sidecar (this one is plain text)
     if not json_path.exists():
         url = _hf_url(dirpath, base, ".onnx.json")
         if progress_cb: progress_cb(f"Downloading {json_path.name}", 0.0)

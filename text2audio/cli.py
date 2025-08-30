@@ -32,9 +32,6 @@ def main():
         backend=args.backend,
         out=args.out,
         piper_model=args.piper_model,
-        length_scale=args.piper_length,
-        noise_scale=args.piper_noise,
-        noise_w=args.piper_noisew,
     )
     print(out_path)
 

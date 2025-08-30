@@ -6,3 +6,8 @@ piper-tts>=1.2.0,<2
 onnxruntime>=1.17.0,<2
 piper-phonemize
 requests>=2.32.0
+pdfminer.six
+docx2txt
+pytesseract
+pdf2image
+Pillow
