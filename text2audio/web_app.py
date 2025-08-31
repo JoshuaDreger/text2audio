@@ -1,4 +1,5 @@
-# app.py (or your current Streamlit script)
+# app.py (Streamlit UI) — saves outputs to OUTPUT_DIR (default: /data)
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -7,12 +8,18 @@ import streamlit as st
 from text2audio.core import synthesize
 from text2audio.model_repo import MODELS, ensure_model
 
-# NEW: import the extraction helpers
+# File → Text helpers (optional step)
 from file_to_text import extract_text_from_bytes, has_ocr_stack
+
+# ---------- Shared output directory ----------
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "/data"))
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(page_title="text2audio", page_icon="🔊")
 st.title("Text → Audio")
-st.caption(f"Working dir: `{Path.cwd()}` · Python: `{sys.executable}`")
+st.caption(
+    f"Working dir: `{Path.cwd()}` · Python: `{sys.executable}` · OUTPUT_DIR: `{OUTPUT_DIR}`"
+)
 
 # ---------- File → Text UI (collapsed until needed) ----------
 prefill_text = ""
@@ -45,7 +52,7 @@ with st.expander("1) Optional: Convert a file to text (click to open)"):
         file_bytes = uploaded.read()
         uploaded.seek(0)
 
-        # Small callback to stream progress/info messages into the UI (used by OCR)
+        # Progress/info callback for OCR
         def _on_info(msg: str) -> None:
             st.write(msg)
 
@@ -81,18 +88,30 @@ backend_label = st.selectbox(
     ["gTTS (mp3, online)", "pyttsx3 (wav, offline)", "Piper (wav, offline)"]
 )
 
+# Map label → backend key
+chosen = "gtts" if backend_label.startswith("gTTS") else (
+    "pyttsx3" if backend_label.startswith("pyttsx3") else "piper"
+)
+
 piper_model_key = None
 if backend_label.startswith("Piper"):
     st.info("Voices download automatically from Hugging Face on first use.")
     keys = sorted(MODELS.keys())
-    piper_model_key = st.selectbox("Piper voice", keys, index=keys.index("de_DE-thorsten-high") if "de_DE-thorsten-high" in keys else 0)
+    piper_model_key = st.selectbox(
+        "Piper voice",
+        keys,
+        index=keys.index("de_DE-thorsten-high") if "de_DE-thorsten-high" in keys else 0
+    )
 
 filename = st.text_input(
     "Output filename",
-    value="speech.wav" if backend_label.startswith(("Piper", "pyttsx3")) else "speech.mp3"
+    value="speech.wav" if chosen in ("piper", "pyttsx3") else "speech.mp3"
 )
 
-chunking = st.checkbox("Split text into ~1200-character chunks (recommended for very long texts)", value=False)
+chunking = st.checkbox(
+    "Split text into ~1200-character chunks (recommended for very long texts)",
+    value=False
+)
 
 def _chunks(s, n=1200):
     s = s.strip()
@@ -101,8 +120,7 @@ def _chunks(s, n=1200):
 
 if st.button("Synthesize") and text.strip():
     try:
-        chosen = "gtts" if backend_label.startswith("gTTS") else ("pyttsx3" if backend_label.startswith("pyttsx3") else "piper")
-
+        # Ensure Piper model exists (with a small progress bar)
         if chosen == "piper":
             prog = st.progress(0.0, text="Checking voice model…")
             def _cb(label, frac):
@@ -112,38 +130,46 @@ if st.button("Synthesize") and text.strip():
 
         if chunking and len(text) > 1500:
             import zipfile
+
             tmpdir = Path(tempfile.mkdtemp(prefix="tts_chunks_"))
-            out_zip = Path(filename).with_suffix(".zip")
+            out_zip = (OUTPUT_DIR / filename).with_suffix(".zip")
             paths = []
+
             for idx, part in enumerate(_chunks(text), start=1):
                 part_name = Path(filename).with_stem(Path(filename).stem + f"_{idx}")
+                part_out = tmpdir / part_name.name
                 out_path = synthesize(
                     part,
                     backend=chosen,
-                    out=str(tmpdir / part_name.name),
+                    out=str(part_out),  # keep chunk files in tmpdir first
                     piper_model=piper_model_key if chosen == "piper" else None,
                 )
                 paths.append(out_path)
 
+            # Pack chunks into ZIP under OUTPUT_DIR
             with zipfile.ZipFile(out_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
                 for p in paths:
                     zf.write(p, arcname=p.name)
 
             st.success(f"Saved {len(paths)} audio chunks → {out_zip}")
             st.download_button("Download ZIP", data=out_zip.read_bytes(), file_name=out_zip.name)
+
         else:
+            # Save single file directly to OUTPUT_DIR
+            target = OUTPUT_DIR / filename
             out_path = synthesize(
                 text,
                 backend=chosen,
-                out=filename,
+                out=str(target),
                 piper_model=piper_model_key if chosen == "piper" else None,
             )
-            if not out_path.exists():
+
+            if not Path(out_path).exists():
                 st.error(f"Audio file not found: {out_path}")
             else:
                 st.success(f"Saved → {out_path}")
                 st.audio(str(out_path))
-                st.download_button("Download audio", data=out_path.read_bytes(), file_name=out_path.name)
+                st.download_button("Download audio", data=Path(out_path).read_bytes(), file_name=Path(out_path).name)
 
     except Exception as e:
         st.error(f"Failed to synthesize: {e}")

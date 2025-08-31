@@ -32,8 +32,11 @@ COPY . /app
 # Install your package (editable-like in container)
 RUN pip install --no-cache-dir -e .
 
-# Expose Streamlit port
-EXPOSE 8501
+# Entrypoint script to launch both API and Streamlit
+RUN chmod +x /app/entrypoint.sh
 
-# Default command: launch the web UI
-CMD ["streamlit", "run", "text2audio/web_app.py"]
+# Expose API and Streamlit ports
+EXPOSE 8000 8501
+
+# Default command: launch the entrypoint script
+CMD ["/app/entrypoint.sh"]
