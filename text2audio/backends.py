@@ -16,32 +16,29 @@ def tts_gtts(text: str, lang: str = "en", out: Path = Path("out.mp3")) -> Path:
         raise RuntimeError(f"gTTS reported success but file not found: {out}")
     return out
 
+# text2audio/backends.py
 def tts_pyttsx3(text: str, lang: Optional[str] = None, out: Path = Path("out.wav")) -> Path:
-    import pyttsx3, time
-    out = _prep_out(out)
-    engine = pyttsx3.init()
-    if lang:
-        for v in engine.getProperty("voices"):
-            # robust language check
-            langs = []
-            try:
-                langs = [x.decode().lower() if isinstance(x, (bytes, bytearray)) else str(x).lower() for x in getattr(v, "languages", [])]
-            except Exception:
-                pass
-            name = getattr(v, "name", "").lower()
-            if lang.lower() in name or any(lang.lower() in l for l in langs):
-                engine.setProperty("voice", v.id); break
-    engine.save_to_file(text, str(out))
-    engine.runAndWait()
+    from pyttsx3_engine import synthesize_to_wav
+    import shutil, subprocess, tempfile
 
-    # Some Linux drivers are slow to flush. Poll briefly.
-    for _ in range(50):  # up to ~2.5s
-        if out.exists() and out.stat().st_size > 0:
-            break
-        time.sleep(0.05)
-    if not out.exists() or out.stat().st_size == 0:
-        raise RuntimeError(f"pyttsx3 did not produce audio at: {out}")
-    return out
+    out = _prep_out(out)
+    try:
+        return Path(synthesize_to_wav(text, str(out), voice_lang=lang))
+    except Exception as e_py:
+        # Fallback to espeak CLI
+        es = shutil.which("espeak") or shutil.which("espeak-ng")
+        if not es:
+            raise RuntimeError(f"pyttsx3 failed ({e_py}) and no espeak/espeak-ng CLI in PATH")
+        cmd = [es, "-w", str(out)]
+        if lang:
+            # espeak lang codes look like 'en', 'de', 'en-us' etc.
+            cmd += ["-v", lang]
+        # Use stdin to avoid quote/escape headaches
+        cp = subprocess.run(cmd, input=text.encode("utf-8"), check=False)
+        if cp.returncode != 0 or (not out.exists() or out.stat().st_size == 0):
+            raise RuntimeError(f"espeak CLI failed with code {cp.returncode}") from e_py
+        return out
+
 
 def tts_piper(
     text: str,

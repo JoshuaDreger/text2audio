@@ -20,7 +20,7 @@ MODELS: Dict[str, Tuple[str, str]] = {
         "en_US-amy-medium"
     ),
     "Libri (US)": (
-        "en/en_US/libritts/medium",
+        "en/en_US/libritts_r/medium",
         "en_US-libritts_r-medium"
     ),
 }

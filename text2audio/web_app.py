@@ -41,13 +41,6 @@ with st.expander("1) Optional: Convert a file to text (click to open)"):
         help="Enable if your PDF is scanned images. Requires pytesseract + pdf2image + poppler."
     )
 
-    if use_ocr:
-        ocr_lang = st.text_input(
-            "OCR language(s)",
-            value="eng+deu",
-            help="Tesseract language codes (e.g., eng, deu, eng+deu)."
-        )
-
     if uploaded is not None:
         file_bytes = uploaded.read()
         uploaded.seek(0)
