@@ -17,9 +17,6 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(page_title="text2audio", page_icon="🔊")
 st.title("Text → Audio")
-st.caption(
-    f"Working dir: `{Path.cwd()}` · Python: `{sys.executable}` · OUTPUT_DIR: `{OUTPUT_DIR}`"
-)
 
 # ---------- File → Text UI (collapsed until needed) ----------
 prefill_text = ""
